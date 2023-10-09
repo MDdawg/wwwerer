@@ -251,3 +251,55 @@ while true; do
         * ) echo "Please answer y or n.";;
     esac
 done
+# Function to manage users
+manage_users() {
+    local users=$(cut -d: -f1 /etc/passwd)
+    for user in $users; do
+        echo "Managing user: $user"
+        read -p "Change this user (y/n/-a to add a user)? " choice
+        case $choice in
+            [Yy]* ) manage_user "$user";;
+            [Aa]* ) add_new_user;;
+            * ) echo "Skipping $user";;
+        esac
+    done
+}
+
+# Function to manage a specific user
+manage_user() {
+    local username="$1"
+    echo "Managing user: $username"
+    while true; do
+        read -p "Options for $username: [1] Change password [2] Change user type [3] Delete user [4] Skip [5] Done: " option
+        case $option in
+            1 ) # Change Password
+                sudo passwd "$username"
+                ;;
+            2 ) # Change User Type (e.g., from standard to admin)
+                sudo usermod -aG sudo "$username"
+                ;;
+            3 ) # Delete User
+                sudo deluser "$username"
+                ;;
+            4 ) # Skip User
+                break
+                ;;
+            5 ) # Done with this user
+                break
+                ;;
+            * ) echo "Invalid option";;
+        esac
+    done
+}
+
+# Function to add a new user
+add_new_user() {
+    read -p "Enter username for the new user: " new_username
+    sudo adduser "$new_username"
+    sudo usermod -aG sudo "$new_username" # Add to the sudo group if needed
+}
+
+# Main script
+manage_users
+
+echo "Done managing users."

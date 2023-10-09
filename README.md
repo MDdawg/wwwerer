@@ -1,4 +1,40 @@
 #!/bin/bash
+if [ "$(id -u)" != "0" ]; then
+    echo "This script must be run as root. Please use 'sudo'." >&2
+    exit 1
+fi
+# Define a function to create backups of configuration files
+backup_config_file() {
+    local config_file="$1"
+    local backup_dir="/path/to/backup/directory"  # Change this to the desired backup directory
+
+    # Check if the file exists
+    if [ -e "$config_file" ]; then
+        # Create a backup with a timestamp
+        local backup_file="${backup_dir}/$(basename $config_file).$(date +%Y%m%d%H%M%S)"
+       
+        # Copy the original file to the backup location
+        cp "$config_file" "$backup_file"
+
+        # Output a message
+        echo "Backup created: $backup_file"
+    else
+        echo "File not found: $config_file"
+    fi
+}
+
+# Usage: backup_config_file "/etc/lightdm/lightdm.conf"
+
+# Your existing script here...
+
+# Example usage of the backup_config_file function
+# Uncomment and customize this line to create a backup before making changes
+# backup_config_file "/etc/lightdm/lightdm.conf"
+
+# Main script
+manage_users
+
+echo "Done managing users."
 #update and upgrade
 while true; do
     read -p "update and upgrade? y/n " yn

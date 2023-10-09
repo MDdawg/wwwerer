@@ -341,5 +341,92 @@ while true; do
     esac
 done
 
+# Function to edit a configuration file if it exists
+edit_config_file() {
+    local file_path="$1"
+    local config_entry="$2"
+    if [ -f "$file_path" ]; then
+        sudo sed -i "s/^#*$config_entry.*$/$config_entry/" "$file_path"
+    fi
+}
+
+# SSH Configuration
+ssh_config_file="/etc/ssh/sshd_config"
+edit_config_file "$ssh_config_file" "PermitRootLogin no"
+edit_config_file "$ssh_config_file" "AllowTcpForwarding no"
+
+# LightDM Configuration
+lightdm_config_file="/etc/lightdm/lightdm.conf"
+if [ -f "$lightdm_config_file" ]; then
+    sudo sed -i 's/^allow-guest=.*/allow-guest=false/' "$lightdm_config_file"
+else
+    echo "allow-guest=false" | sudo tee -a "$lightdm_config_file"
+fi
+
+# User Management
+# Delete unauthorized users (replace 'username' with actual usernames)
+sudo deluser username
+# Ensure sudoers.d is correctly configured
+
+# File System Inspection
+# Examine directories for media or hacking tools
+# Navigate to /home and list all files for inspection
+sudo find /home -type f -exec file {} + | grep -E 'media|tools|hacking'
+# Check for malware (you may use a specific malware scanner)
+
+# Password Policy
+login_defs_file="/etc/login.defs"
+sudo sed -i 's/^PASS_MIN_DAYS.*/PASS_MIN_DAYS 7/' "$login_defs_file"
+sudo sed -i 's/^PASS_MAX_DAYS.*/PASS_MAX_DAYS 90/' "$login_defs_file"
+sudo sed -i 's/^PASS_WARN_AGE.*/PASS_WARN_AGE 14/' "$login_defs_file"
+
+# Implement password complexity requirements
+common_password_file="/etc/pam.d/common-password"
+sudo sed -i '/pam_unix.so/s/$/ minlen=8 remember=5/' "$common_password_file"
+sudo apt-get install libpam-cracklib
+sudo sed -i '/pam.cracklib.so/s/$/ ucredit=-1 lcredit=-1 dcredit=-1 ocredit=-1/' "$common_password_file"
+
+# Account Lockout Policy
+common_auth_file="/etc/pam.d/common-auth"
+echo "auth required pam_tally2.so deny=5 unlock_time=1800" | sudo tee -a "$common_auth_file"
+
+# Password Changes (handled manually)
+
+# Automatic Updates
+sudo apt-get install unattended-upgrades
+sudo dpkg-reconfigure -plow unattended-upgrades
+
+# Port Security (Not automated due to potential risks)
+# Firewall (Not automated due to potential risks)
+
+# SYN Cookie Protection
+sudo sysctl -w net.ipv4.tcp_syncookies=1
+
+# System Updates
+sudo apt-get update
+sudo apt-get upgrade
+
+# IPv6 and IP Forwarding
+echo "net.ipv6.conf.all.disable_ipv6 = 1" | sudo tee -a /etc/sysctl.conf
+echo "0" | sudo tee /proc/sys/net/ipv4/ip_forward
+
+# Prevent IP Spoofing
+echo "nospoof on" | sudo tee -a /etc/host.conf
+
+# Service Management (Not automated)
+
+# Security Tools and Resources (Not automated)
+
+# Password Recovery (handled manually)
+
+# Root Account and File Permissions
+sudo passwd -l root
+# Set appropriate permissions for user directories (replace 'username' with actual usernames)
+sudo chmod 0750 /home/username
+
+# Additional Resources (Not automated)
+
+echo "Security configuration completed."
+
 # Done with the script
 echo "Script execution completed."

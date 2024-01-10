@@ -1,91 +1,17 @@
 #!/bin/bash
 
-# Function to create backups of configuration files
-backup_config_file() {
-    local config_file="$1"
-    local backup_dir="/path/to/backup/directory"  # Change this to the desired backup directory
-
-    # Check if the file exists
-    if [ -e "$config_file" ]; then
-        # Create a backup with a timestamp
-        local backup_file="${backup_dir}/$(basename "$config_file").$(date +%Y%m%d%H%M%S)"
-
-        # Copy the original file to the backup location
-        cp "$config_file" "$backup_file"
-
-        # Output a message
-        echo "Backup created: $backup_file"
-    else
-        echo "File not found: $config_file"
-    fi
-}
-
-# Function to manage users
-manage_users() {
-    local users=$(cut -d: -f1 /etc/passwd)
-    for user in $users; do
-        echo "Managing user: $user"
-        read -p "Change this user (y/n/-a to add a user)? " choice
-        case $choice in
-            [Yy]* ) manage_user "$user";;
-            [Aa]* ) add_new_user;;
-            * ) echo "Skipping $user";;
-        esac
-    done
-}
-
-# Function to manage a specific user
-manage_user() {
-    local username="$1"
-    echo "Managing user: $username"
-    while true; do
-        read -p "Options for $username: [1] Change password [2] Change user type [3] Delete user [4] Skip [5] Done: " option
-        case $option in
-            1 ) # Change Password
-                sudo passwd "$username"
-                ;;
-            2 ) # Change User Type (e.g., from standard to admin)
-                sudo usermod -aG sudo "$username"
-                ;;
-            3 ) # Delete User
-                sudo deluser "$username"
-                ;;
-            4 ) # Skip User
-                break
-                ;;
-            5 ) # Done with this user
-                break
-                ;;
-            * ) echo "Invalid option";;
-        esac
-    done
-}
-
-# Function to add a new user
-add_new_user() {
-    read -p "Enter username for the new user: " new_username
-    sudo adduser "$new_username"
-    sudo usermod -aG sudo "$new_username" # Add to the sudo group if needed
-}
-
-# Check if the script is run as root
-if [ "$(id -u)" != "0" ]; then
-    echo "This script must be run as root. Please use 'sudo'." >&2
-    exit 1
-fi
-
+echo " MEOW "
 # Main script
-echo "***| TIP: Do ctrl+z to exit a script! |*** "
 
 # Update and upgrade
 while true; do
     read -p "Update and upgrade? y/n " yn
     case $yn in
         [Yy]* ) apt-get update && apt-get upgrade -y && apt-get dist-upgrade -y
-	            sudo apt-get install -f -y
-	            sudo apt-get autoremove -y
-	            sudo apt-get autoclean -y
-	            sudo apt-get check -y
+                sudo apt-get install -f -y
+                sudo apt-get autoremove -y
+                sudo apt-get autoclean -y
+                sudo apt-get check -y
                 sudo dnf update -y
                 sudo apt install --only-upgrade firefox -y
                 break;;
@@ -165,15 +91,15 @@ echo "Listed all user groups."
 
 # Delete specific file types
 while true; do
-    read -p "Delete specific file types? y/n " yn
+    read -p "Delete non-work-related media files? y/n " yn
     case $yn in
-        [Yy]* ) find / -type f \( -name '*.mp3' -o -name '*.mov' -o -name '*.mp4' -o -name '*.avi' -o -name '*.mpg' -o -name '*.mpeg' -o -name '*.flac' -o -name '*.m4a' -o -name '*.flv' -o -name '*.ogg' -o -name '*.gif' -o -name '*.png' -o -name '*.jpg' -o -name '*.jpeg' \) -exec rm {} \;
+        [Yy]* ) find /home -type f \( -name '*.mp3' -o -name '*.mov' -o -name '*.mp4' -o -name '*.avi' -o -name '*.mpg' -o -name '*.mpeg' -o -name '*.flac' -o -name '*.m4a' -o -name '*.flv' -o -name '*.ogg' -o -name '*.gif' -o -name '*.png' -o -name '*.jpg' -o -name '*.jpeg' \) -exec rm {} \;
                 break;;
         [Nn]* ) echo "Process aborted"; break;;
         * ) echo "Please answer y or n.";;
     esac
 done
-echo "Deleted specific file types."
+echo "Deleted non-work-related media files."
 
 # Manual Network Inspection
 while true; do
@@ -212,6 +138,37 @@ while true; do
     esac
 done
 echo "Samba files removed."
+
+elif [ $sambaYN == yes ]
+then
+  ufw allow netbios-ns
+  ufw allow netbios-dgm
+  ufw allow netbios-ssn
+  ufw allow microsoft-ds
+  apt-get -y -qq install samba
+  apt-get -y -qq install system-config-samba
+  cp /etc/samba/smb.conf $USER_HOME/Desktop/backups/
+  if [ "$(grep '####### Authentication #######' /etc/samba/smb.conf)"==0 ]
+  then
+    sed -i 's/####### Authentication #######/####### Authentication #######\nsecurity = user/g' /etc/samba/smb.conf
+  fi
+  sed -i 's/usershare allow guests = no/usershare allow guests = yes/g' /etc/samba/smb.conf
+
+  echo Type all user account names, with a space in between
+  read -a usersSMB
+  usersSMBLength=${#usersSMB[@]}  
+  for (( i=0;i<$usersSMBLength;i++))
+  do
+    echo -e 'H=Fmcqz3M]}&rfC%F>b)\nH=Fmcqz3M]}&rfC%F>b)' | smbpasswd -a ${usersSMB[${i}]}
+    echo "${usersSMB[${i}]} has been given the password 'H=Fmcqz3M]}&rfC%F>b)' for Samba."
+  done
+  echo "netbios-ns, netbios-dgm, netbios-ssn, and microsoft-ds ports have been allowed. Samba config file has been configured."
+
+  clear
+else
+  echo Response not recognized.
+fi
+echo "Samba is complete."
 
 # Disable guest accounts
 while true; do
@@ -341,19 +298,12 @@ while true; do
     esac
 done
 
-# Function to edit a configuration file if it exists
-edit_config_file() {
-    local file_path="$1"
-    local config_entry="$2"
-    if [ -f "$file_path" ]; then
-        sudo sed -i "s/^#*$config_entry.*$/$config_entry/" "$file_path"
-    fi
-}
-
 # SSH Configuration
 ssh_config_file="/etc/ssh/sshd_config"
-edit_config_file "$ssh_config_file" "PermitRootLogin no"
-edit_config_file "$ssh_config_file" "AllowTcpForwarding no"
+if [ -f "$ssh_config_file" ]; then
+    sudo sed -i 's/PermitRootLogin.*/PermitRootLogin no/' "$ssh_config_file"
+    sudo sed -i 's/AllowTcpForwarding.*/AllowTcpForwarding no/' "$ssh_config_file"
+fi
 
 # LightDM Configuration
 lightdm_config_file="/etc/lightdm/lightdm.conf"
@@ -363,13 +313,6 @@ else
     echo "allow-guest=false" | sudo tee -a "$lightdm_config_file"
 fi
 
-# User Management
-# Delete unauthorized users (replace 'username' with actual usernames)
-sudo deluser username
-# Ensure sudoers.d is correctly configured
-
-# File System Inspection
-# Examine directories for media or hacking tools
 # Navigate to /home and list all files for inspection
 sudo find /home -type f -exec file {} + | grep -E 'media|tools|hacking'
 # Check for malware (you may use a specific malware scanner)
@@ -390,14 +333,9 @@ sudo sed -i '/pam.cracklib.so/s/$/ ucredit=-1 lcredit=-1 dcredit=-1 ocredit=-1/'
 common_auth_file="/etc/pam.d/common-auth"
 echo "auth required pam_tally2.so deny=5 unlock_time=1800" | sudo tee -a "$common_auth_file"
 
-# Password Changes (handled manually)
-
 # Automatic Updates
 sudo apt-get install unattended-upgrades
 sudo dpkg-reconfigure -plow unattended-upgrades
-
-# Port Security (Not automated due to potential risks)
-# Firewall (Not automated due to potential risks)
 
 # SYN Cookie Protection
 sudo sysctl -w net.ipv4.tcp_syncookies=1
@@ -411,22 +349,217 @@ echo "net.ipv6.conf.all.disable_ipv6 = 1" | sudo tee -a /etc/sysctl.conf
 echo "0" | sudo tee /proc/sys/net/ipv4/ip_forward
 
 # Prevent IP Spoofing
-echo "nospoof on" | sudo tee -a /etc/host.conf
-
-# Service Management (Not automated)
-
-# Security Tools and Resources (Not automated)
-
-# Password Recovery (handled manually)
+while true; do
+    read -p "Prevent IP Spoofing? y/n " yn
+    case $yn in
+        [Yy]* )
+            # Prevent IP Spoofing
+            echo "nospoof on" | sudo tee -a /etc/host.conf
+            break;;
+        [Nn]* )
+            echo "Skipped."
+            break;;
+        * )
+            echo "Please answer y or n.";;
+    esac
+done
 
 # Root Account and File Permissions
 sudo passwd -l root
+
 # Set appropriate permissions for user directories (replace 'username' with actual usernames)
 sudo chmod 0750 /home/username
 
-# Additional Resources (Not automated)
+# List of hacking tools to remove
+hacking_tools=("nmap" "wireshark" "john" "hydra" "netcat" "metasploit" "sqlmap" "lynis" "fluxion" "nikto" "skipfish" "zenmap" "apache2" "nginx" "lighttpd" "tcpdump" "netcat-traditional" "ophcrack")
 
+echo "Removing known hacking tools..."
+
+# Loop through the list and remove each tool
+for tool in "${hacking_tools[@]}"; do
+    echo "Removing $tool..."
+    sudo apt-get purge -y $tool
+done
+
+# Find rootkits, backdoors, etc.
+while true; do
+    read -p "Run rootkit and exploit scanner? y/n " yn
+    case $yn in
+        [Yy]* )
+            # Install and run rootkit scanners
+            sudo apt-get install -y chkrootkit rkhunter
+            sudo chkrootkit
+            sudo rkhunter --update
+            sudo rkhunter --check
+            echo "Rootkit and exploit scan completed."
+            break;;
+        [Nn]* )
+            echo "Skipped rootkit and exploit scan."
+            break;;
+        * )
+            echo "Please answer y or n.";;
+    esac
+done
+
+while true; do
+    read -p "ssh config? y/n " yn
+    case $yn in
+        [Yy]* )
+            # ssh config
+            if grep -qF 'PermitRootLogin' /etc/ssh/sshd_config; then sed -i 's/^.*PermitRootLogin.*$/PermitRootLogin no/'                             /etc/ssh/sshd_config; else echo 'PermitRootLogin no' >> /etc/ssh/sshd_config; fi
+            PermitRootLogin no
+            ChallengeResponseAuthentication no
+            PasswordAuthentication no
+            UsePAM no
+            PermitEmptyPasswords no
+            sudo sshd -t
+            break;;
+        [Nn]* )
+            echo "Skipped."
+            break;;
+        * )
+            echo "Please answer y or n.";;
+    esac
+done
+
+# Install and configure auditd
+while true; do
+    read -p "Install and configure auditd? y/n " yn
+    case $yn in
+        [Yy]* )
+            # Install and configure auditd
+            confirm_action "Install and configure auditd"
+            sudo apt-get install auditd
+            sudo auditctl -e 1
+            break;;
+        [Nn]* )
+            echo "Skipped."
+            break;;
+        * )
+            echo "Please answer y or n.";;
+    esac
+done
+
+# Display additional information
+while true; do
+    read -p "Display additional user information? y/n " yn
+    case $yn in
+        [Yy]* )
+            # Display additional information
+            mawk -F: '$1 == "sudo"' /etc/group
+            mawk -F: '$3 > 999 && $3 < 65534 {print $1}' /etc/passwd
+            mawk -F: '$2 == ""' /etc/passwd
+            mawk -F: '$3 == 0 && $1 != "root"' /etc/passwd
+            break;;
+        [Nn]* )
+            echo "Skipped."
+            break;;
+        * )
+            echo "Please answer y or n.";;
+    esac
+done
+
+# Find specific file types in /home (hacking files) 
+while true; do
+    read -p "Find specific file types in /home? (hacking files) y/n " yn
+    case $yn in
+        [Yy]* )
+            # Find specific file types in /home
+            find /home/ -type f \( -name "*.tar.gz" -o -name "*.tgz" -o -name "*.zip" -o -name "*.deb" \)
+            break;;
+        [Nn]* )
+            echo "Skipped."
+            break;;
+        * )
+            echo "Please answer y or n.";;
+    esac
+done
+
+# Set appropriate permissions for home directories
+while true; do
+    read -p "home directory permisions? y/n " yn
+    case $yn in
+        [Yy]* )
+            # Set appropriate permissions for home directories
+            for i in $(mawk -F: '$3 > 999 && $3 < 65534 {print $1}' /etc/passwd); do [ -d /home/${i} ] && chmod -R 750 /home/${i}; done
+            break;;
+        [Nn]* )
+            echo "Skipped."
+            break;;
+        * )
+            echo "Please answer y or n.";;
+    esac
+done
+
+# Disable USB storage
+while true; do
+    read -p "Disable USB storage? y/n " yn
+    case $yn in
+        [Yy]* )
+            # Disable USB storage
+            echo 'install usb-storage /bin/true' >> /etc/modprobe.d/disable-usb-storage.conf
+            break;;
+        [Nn]* )
+            echo "Skipped."
+            break;;
+        * )
+            echo "Please answer y or n.";;
+    esac
+done
+
+# Disable Firewire and Thunderbolt
+while true; do
+    read -p "Disable Firewire and Thunderbolt? y/n " yn
+    case $yn in
+        [Yy]* )
+            # Disable Firewire and Thunderbolt
+            echo "blacklist firewire-core" >> /etc/modprobe.d/firewire.conf
+            echo "blacklist thunderbolt" >> /etc/modprobe.d/thunderbolt.conf
+            break;;
+        [Nn]* )
+            echo "Skipped."
+            break;;
+        * )
+            echo "Please answer y or n.";;
+    esac
+done
+
+# Disable Avahi daemon
+while true; do
+    read -p "Disable Avahi daemon? y/n " yn
+    case $yn in
+        [Yy]* )
+            # Disable Avahi daemon
+            systemctl disable avahi-daemon
+            break;;
+        [Nn]* )
+            echo "Skipped."
+            break;;
+        * )
+            echo "Please answer y or n.";;
+    esac
+done
+
+# 
+while true; do
+    read -p "y/n " yn
+    case $yn in
+        [Yy]* )
+            # 
+            break;;
+        [Nn]* )
+            echo "Skipped."
+            break;;
+        * )
+            echo "Please answer y or n.";;
+    esac
+done
+
+# Display cleanup completion message
+echo "Cleanup completed."
+
+# Display completion message
 echo "Security configuration completed."
 
-# Done with the script
+# Display script completion message
 echo "Script execution completed."

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo " MEOW "
+echo " MEOW MEOW NIGGA"
 # Main script
 
 # Update and upgrade

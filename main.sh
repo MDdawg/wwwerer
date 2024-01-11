@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo " MEOW MEOW NIGGA"
+echo " MEOW MEOW "
 # Main script
 
 # Update and upgrade
@@ -171,37 +171,6 @@ while true; do
     esac
 done
 echo "Samba files removed."
-
-elif [ $sambaYN == yes ]
-then
-  ufw allow netbios-ns
-  ufw allow netbios-dgm
-  ufw allow netbios-ssn
-  ufw allow microsoft-ds
-  apt-get -y -qq install samba
-  apt-get -y -qq install system-config-samba
-  cp /etc/samba/smb.conf $USER_HOME/Desktop/backups/
-  if [ "$(grep '####### Authentication #######' /etc/samba/smb.conf)"==0 ]
-  then
-    sed -i 's/####### Authentication #######/####### Authentication #######\nsecurity = user/g' /etc/samba/smb.conf
-  fi
-  sed -i 's/usershare allow guests = no/usershare allow guests = yes/g' /etc/samba/smb.conf
-
-  echo Type all user account names, with a space in between
-  read -a usersSMB
-  usersSMBLength=${#usersSMB[@]}  
-  for (( i=0;i<$usersSMBLength;i++))
-  do
-    echo -e 'H=Fmcqz3M]}&rfC%F>b)\nH=Fmcqz3M]}&rfC%F>b)' | smbpasswd -a ${usersSMB[${i}]}
-    echo "${usersSMB[${i}]} has been given the password 'H=Fmcqz3M]}&rfC%F>b)' for Samba."
-  done
-  echo "netbios-ns, netbios-dgm, netbios-ssn, and microsoft-ds ports have been allowed. Samba config file has been configured."
-
-  clear
-else
-  echo Response not recognized.
-fi
-echo "Samba is complete."
 
 # Disable guest accounts
 while true; do
